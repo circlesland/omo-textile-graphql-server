@@ -1,0 +1,36 @@
+{
+  "name": "omo-graphql-textile-server",
+  "version": "0.0.1",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "build": "webpack --config webpack.development.js",
+    "build:prod": "webpack --config webpack.production.js",
+    "start": "node dist/server",
+    "start:env": "node --require dotenv/config dist/server"
+  },
+  "keywords": [],
+  "author": "omo.earth",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@textile/textile": "0.0.7",
+    "@textile/threads-client": "0.2.6",
+    "@types/uuid": "^7.0.2",
+    "apollo-server": "^2.11.0",
+    "graphql": "^15.0.0",
+    "isomorphic-ws": "^4.0.1",
+    "uuid": "^7.0.3",
+    "ws": "^7.2.3"
+  },
+  "devDependencies": {
+    "@types/webpack-env": "^1.15.1",
+    "clean-webpack-plugin": "^3.0.0",
+    "dotenv": "^8.2.0",
+    "ts-loader": "^6.2.2",
+    "typescript": "^3.8.3",
+    "webpack": "^4.42.1",
+    "webpack-cli": "^3.3.11",
+    "webpack-merge": "^4.2.2",
+    "webpack-node-externals": "^1.7.2"
+  }
+}
