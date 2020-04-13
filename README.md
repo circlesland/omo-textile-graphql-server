@@ -2,7 +2,7 @@
 This is a prototype using a ApolloServer in order to use GraphQL queries with textile threads db.
 
 # Install & Usage
-- Create an APP Token for textile [documentation](https://docs.textile.io/)
+- Run local instance of threadsd of [textile](https://github.com/textileio/textile) see also their [documentation](https://docs.textile.io/)
 - Create an .env file in root directory with following content
 
     `PORT=4000`
@@ -10,8 +10,6 @@ This is a prototype using a ApolloServer in order to use GraphQL queries with te
     `APOLLO_INTROSPECTION=true`
 
     `APOLLO_PLAYGROUND=true`
-
-    `APP_TOKEN='<your textile token>'`
 
 - build the project with `npm run build`
 - open new terminal an run `npm run start:env`

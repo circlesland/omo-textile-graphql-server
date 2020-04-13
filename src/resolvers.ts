@@ -1,6 +1,6 @@
-import { client, storeId } from './textileThreads'
-import { Author, Book, Library } from './schemas';
-import { Query } from "@textile/threads-client";
+import { Library, Author, Book } from './textileThreads'
+import { author, book, library } from './schemas';
+import { Result } from 'interface-datastore';
 
 const { PubSub } = require('apollo-server');
 export const pubsub = new PubSub();
@@ -8,43 +8,63 @@ export const BOOK_ADDED = 'BOOK_ADDED';
 export const AUTHOR_ADDED = 'AUTHOR_ADDED';
 export const LIBRARY_ADDED = 'LIBRARY_ADDED';
 
+async function toArray<T>(iterator: AsyncIterable<Result<T>>): Promise<Array<T>> {
+    const arr = Array<T>();
+    for await (const entry of iterator) {
+        arr.push(entry.value)
+    }
+    return arr;
+}
+
 export default {
     Library: {
-        books: async (parent: Library) => (await client.modelFind(storeId, "Book", new Query().and("libraryId").eq(parent.ID))).entitiesList
+        books: async (parent: library) => await toArray(await Book.find({ libraryId: parent.ID }))
     },
     Book: {
-        author: async (parent: Book) => (await client.modelFindByID(storeId, "Author", parent.authorId)).entity,
-        library: async (parent: Book) => (await client.modelFindByID(storeId, "Library", parent.libraryId)).entity,
+        author: async (parent: book) => await Author.findById(parent.authorId),
+        library: async (parent: book) => await Library.findById(parent.libraryId)
     },
     Author: {
-        books: async (parent: Library) => (await client.modelFind(storeId, "Book", new Query().and("authorId").eq(parent.ID))).entitiesList
+        books: async (parent: author) => { console.log(parent); return await toArray(await Book.find({ authorId: parent.ID })) }
     },
     Query: {
-        libraries: async () => (await client.modelFind(storeId, "Library", {})).entitiesList,
-        authors: async () => (await client.modelFind(storeId, "Author", {})).entitiesList,
-        books: async () => (await client.modelFind(storeId, "Book", {})).entitiesList
+        libraries: async () => await toArray(await Library.find()),
+        authors: async () => await toArray(await Author.find()),
+        books: async () => await toArray(await Book.find()),
     },
     Mutation: {
         addBook: async (root: any, { title, authorname, branchname }: any) => {
-            let author = null;
-            let library = null;
-            let book = { title, authorId: null, libraryId: null };
+            let book = await new Book({ title });
             if (authorname) {
-                var authors = (await client.modelFind(storeId, "Author", new Query().and("name").eq(authorname))).entitiesList;
-                author = authors.length > 0 ? authors[0] : (await client.modelCreate<Author>(storeId, "Author", [{ name: authorname }])).entitiesList[0]
-                book.authorId = author.ID;
+                let a = (await Author.findOne({ name: authorname })).value;
+                if (a == undefined) {
+                    a = new Author({ name: authorname });
+                    a.save();
+                }
+                else {
+                    a = a.value;
+                }
+                book.authorId = a.ID;
             }
             if (branchname) {
-                var libraries = (await client.modelFind(storeId, "Library", new Query().and("branch").eq(branchname))).entitiesList;
-                library = libraries.length > 0 ? libraries[0] : (await client.modelCreate<Library>(storeId, "Library", [{ branch: branchname }])).entitiesList[0];
-                book.libraryId = library.ID;
+                let l = (await Library.findOne({ branch: branchname })).value;
+                if (l == undefined) {
+                    l = new Library({ branch: branchname });
+                    l.save();
+                }
+                else {
+                    l = l.value;
+                }
+                book.libraryId = l.ID;
             }
-            await client.modelCreate<Book>(storeId, "Book", [book]);
+            book.save();
             return book;
         },
         deleteBook: async (root: any, { id }: any) => {
-            await client.modelDelete(storeId, "Book", [id])
-            return async () => (await client.modelFind(storeId, "Book", {})).entitiesList;
+            if (Book.has(id)) {
+                await Book.delete(id);
+            }
+            return Book.has(id);
         }
     },
     Subscription: {

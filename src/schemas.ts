@@ -31,7 +31,7 @@ export default gql`
 
   type Mutation {
     addBook(title: String, authorname: String, branchname:String): Book
-    deleteBook(id: String): [Book]
+    deleteBook(id: String): Boolean
   }
 
   type Subscription {
@@ -103,19 +103,19 @@ export const authorSchema = {
   },
 }
 
-export interface Library {
+export interface library {
   ID: string,
   branch: string
 }
 
-export interface Book {
+export interface book {
   ID: string,
   title: string,
   authorId: string,
   libraryId: string
 }
 
-export interface Author {
+export interface author {
   ID: string,
   name: string
 }

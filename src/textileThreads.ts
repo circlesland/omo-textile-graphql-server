@@ -1,78 +1,54 @@
 ; (global as any).WebSocket = require('isomorphic-ws')
-import { API } from '@textile/textile'
-import { Client } from "@textile/threads-client";
-import { authorSchema, bookSchema, librarySchema, Author, Book, Library } from './schemas';
+import { authorSchema, bookSchema, librarySchema, author, book, library } from './schemas';
 import * as uuid from 'uuid';
-import { pubsub, BOOK_ADDED, AUTHOR_ADDED, LIBRARY_ADDED } from './resolvers';
+import { pubsub } from './resolvers';
+import { Op } from '@textile/threads-store'
+import { Database, Collection } from '@textile/threads-database'
+import LevelDatastore from 'datastore-level'
 
-export var client: Client;
-export var storeId = "";
-
+export var Library: Collection<library>;
+export var Book: Collection<book>;
+export var Author: Collection<author>;
 
 export async function initDB() {
-    let api = new API({
-        token: process.env.APP_TOKEN || '',
-        deviceId: uuid.v4()
-    });
+    const store = new LevelDatastore('db/' + uuid.v4() + '.db')
+    const db = new Database(store)
+    await db.open();
+    Library = await db.newCollection<library>("Library", librarySchema);
+    Book = await db.newCollection<book>("Book", bookSchema);
+    Author = await db.newCollection<author>("Author", authorSchema);
 
-    await api.start();
-    client = new Client(api.threadsConfig);
-    storeId = (await client.newStore()).id;
-    await client.registerSchema(storeId, 'Library', librarySchema);
-    await client.registerSchema(storeId, 'Book', bookSchema);
-    await client.registerSchema(storeId, 'Author', authorSchema);
-    client.start(storeId);
-    client.listen<Book>(storeId, 'Book', '', (book) => {
-        if (book)
-            pubsub.publish(BOOK_ADDED, { bookAdded: book.entity });
+    // Subsriptions
+    db.on('**', async (update) => {
+        var collection = db.collections.get(update.collection);
+        if (collection)
+            switch (update.event.type) {
+                case Op.Type.Create:
+                    var patch: any;
+                    patch = {};
+                    patch[update.collection.toLowerCase() + 'Added'] = await collection.findById(update.id);
+                    pubsub.publish(update.collection.toUpperCase() + '_ADDED', patch);
+                    break;
+            }
     })
-    client.listen<Library>(storeId, 'Library', '', (library) => {
-        if (library)
-            pubsub.publish(LIBRARY_ADDED, { libraryAdded: library.entity });
-    })
-    client.listen<Author>(storeId, 'Author', '', (author) => {
-        if (author)
-            pubsub.publish(AUTHOR_ADDED, { authorAdded: author.entity });
-    })
-
 }
 
-
 export async function seedDB() {
-    let libraries = [
-        {
-            ID: null,
-            branch: 'downtown'
-        },
-        {
-            ID: null,
-            branch: 'riverside'
-        }];
-    await client.modelCreate(storeId, 'Library', libraries);
+    var downtown = new Library({ branch: 'downtown' });
+    await downtown.save();
 
-    let authors = [
-        {
-            ID: null,
-            name: 'J.K. Rowling'
-        },
-        {
-            ID: null,
-            name: 'Michael Crichton'
-        }];
-    await client.modelCreate(storeId, 'Author', authors);
+    var riverside = new Library({ branch: 'riverside' });
+    await riverside.save();
 
-    let books = [
-        {
-            title: 'Harry Potter and the Chamber of Secrets',
-            authorId: authors[0].ID,
-            libraryId: libraries[0].ID
-        },
-        {
-            ID: uuid.v4(),
-            title: 'Jurassic Park',
-            authorId: authors[1].ID,
-            libraryId: libraries[1].ID
-        }];
-    await client.modelCreate(storeId, 'Book', books);
-    console.log('seeded');
+    var rowling = new Author({ name: 'J.K. Rowling' });
+    await rowling.save();
+
+    var crichton = new Author({ name: 'Michael Crichton' });
+    await crichton.save();
+
+    var harryPotter = new Book({ title: 'Harry Potter and the Chamber of Secrets', authorId: rowling.ID, libraryId: downtown.ID });
+    await harryPotter.save();
+
+    var jurassicPark = new Book({ title: 'Jurassic Park', authorId: crichton.ID, libraryId: riverside.ID });
+    jurassicPark.save();
 }
