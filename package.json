@@ -23,7 +23,7 @@
     "@types/datastore-level": "0.14.0",
     "@types/interface-datastore": "0.8.0",
     "@types/uuid": "^7.0.2",
-    "apollo-server": "^2.11.0",
+    "apollo-server": "^2.14.2",
     "buffer": "^5.5.0",
     "datastore-core": "^1.0.0",
     "datastore-level": "^0.14.1",
